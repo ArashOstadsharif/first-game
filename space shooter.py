@@ -15,7 +15,7 @@ class bullets:
 class p_bullet(bullets):
     def __init__(self, ob):
         super().__init__(ob)
-        self.damage = 1
+        self.damage = 2
         self.image = pygame.image.load("b_p.PNG")
         self.x -= self.image.get_width()//2
         self.y -= self.image.get_height()+1
@@ -25,12 +25,12 @@ class p_bullet(bullets):
 class b_bullet(bullets):
     def __init__(self, ob):
         super().__init__(ob)
-        self.damage = 3
-        self.image = pygame.image.load("b_p.PNG")
+        self.damage = 2
+        self.image = pygame.image.load("b_b.PNG")
         self.x -= self.image.get_width()//2
-        self.y += self.image.get_height()+1
-        self.vel = 6
-        self.cooldown = 10
+        self.y += ob.image.get_height()+1
+        self.vel = 5
+        self.cooldown = 25
         self.all.append(self)
 
 class player:
@@ -46,7 +46,7 @@ class player:
         self.hitbox = (self.x,self.y,self.image.get_width(),self.image.get_height())
         self.showhitbox = False
         self.facing = [0,-1]
-        self.shiels = shield(self)
+        self.shield = shield(self)
         self.health = 10
         self.maxhealth = 10
         self.healthbarcolor = (0,255,0)
@@ -90,7 +90,7 @@ def draw ():
         p.draw_hitbox()
         e.draw_hitbox()
     pygame.draw.line(screen,e.healthbarcolor,(0,0),((e.maxhealth*10)-(e.maxhealth-e.health)*10,0),20)
-    pygame.draw.line(screen,p.healthbarcolor,(0,30),((p.maxhealth-p.health)*100,30),20)
+    pygame.draw.line(screen,p.healthbarcolor,(0,20),((p.maxhealth*10)-(p.maxhealth-p.health)*10,20),20)
     for bullet in bullets.all:
         screen.blit(bullet.image,(bullet.x,bullet.y))
     screen.blit(e.image,(e.x,e.y))
@@ -143,11 +143,11 @@ while run:
             p.y = screen.get_height() - p.image.get_height()
             p.y_midle = screen.get_height() - p.image.get_height()/2
     if keys[K_UP] :
-        if  p.y-p.vel > 0:
+        if  p.y-p.vel > e.y + e.image.get_height():
             y -= p.vel
         else:
-            p.y = 0
-            p.y_midle = p.image.get_height()/2
+            p.y = e.y + e.image.get_height()
+            p.y_midle = (e.y + e.image.get_height())+p.image.get_height()/2
     if keys[K_RIGHT] :
         if p.x+p.vel < screen.get_width()-p.image.get_width():
             x += p.vel
@@ -201,7 +201,7 @@ while run:
     e.shield.y = e.y - 90
     e.shield.hitbox = e.hitbox
     x = (p.x_midle - e.x_midle)
-    y = (p.y_midle - e.y_midle)
+    y = (p.y - (e.y+e.image.get_height()))
     xn = 1
     yn = 1
     if x != abs(x):
