@@ -1,4 +1,3 @@
-
 from typing import Counter
 import pygame
 from pygame import event
@@ -42,7 +41,7 @@ class b_bullet(bullets):
         self.x -= self.image.get_width()//2
         self.y += ob.image.get_height()+1
         self.vel = 8
-        self.cooldown = 18
+        self.cooldown = 18 
         self.all.append(self)
 
 class player:
@@ -68,7 +67,7 @@ class player:
 class shield:
     def __init__(self,o):
         self.image = pygame.image.load('shield.PNG')
-        self.image.set_alpha(250)
+        self.image.set_alpha(100)
         self.x = o.x
         self.y = o.y-90
         self.time = 300
