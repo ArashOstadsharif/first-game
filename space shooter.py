@@ -1,11 +1,18 @@
+
 from typing import Counter
 import pygame
 from pygame import event
 from pygame import key
+from pygame import mixer
 from pygame.constants import K_DOWN, K_LEFT, K_RIGHT, K_SPACE, K_UP, K_f, K_s, K_x
 import copy
-bg = pygame.image.load("bg.JPG")
+pygame.init()
+bs = pygame.image.load("black_screen.PNG")
+bg = pygame.image.load("bg.PNG")
 allhitbox = []
+bgmusic = mixer.music.load('bg_music.OGG')
+pygame.mixer.music.set_volume(0.5)
+pygame.mixer.music.play(-1)
 class bullets:
     all = []
     def __init__(self,ob):
@@ -17,20 +24,25 @@ class p_bullet(bullets):
         super().__init__(ob)
         self.damage = 2
         self.image = pygame.image.load("b_p.PNG")
+        self.sound = pygame.mixer.Sound('b_p_s.wav')
+        self.damages = pygame.mixer.Sound('b_p_d.mp3')
+        self.damages.set_volume(0.5)
         self.x -= self.image.get_width()//2
         self.y -= self.image.get_height()+1
-        self.vel = 8
-        self.cooldown = 8
+        self.vel = 14
+        self.cooldown = 6
         self.all.append(self)
 class b_bullet(bullets):
     def __init__(self, ob):
         super().__init__(ob)
         self.damage = 2
         self.image = pygame.image.load("b_b.PNG")
+        self.sound = pygame.mixer.Sound('b_b_s.wav')
+        self.damages = pygame.mixer.Sound('b_b_d.mp3')
         self.x -= self.image.get_width()//2
         self.y += ob.image.get_height()+1
-        self.vel = 5
-        self.cooldown = 25
+        self.vel = 8
+        self.cooldown = 18
         self.all.append(self)
 
 class player:
@@ -40,7 +52,7 @@ class player:
         self.y = 250
         self.x_midle = self.image.get_width()/2 + self.x
         self.y_midle = self.image.get_height()/2 + self.y
-        self.vel = 6
+        self.vel = 10
         self.persentage = 0.6
         self.hitbox_h_w = [85,65] 
         self.hitbox = (self.x,self.y,self.image.get_width(),self.image.get_height())
@@ -56,7 +68,7 @@ class player:
 class shield:
     def __init__(self,o):
         self.image = pygame.image.load('shield.PNG')
-        self.image.set_alpha(100)
+        self.image.set_alpha(250)
         self.x = o.x
         self.y = o.y-90
         self.time = 300
@@ -70,7 +82,7 @@ class enenmy:
         self.y_midle = self.image.get_height()/2 + self.y
         self.hitbox = (self.x,self.y,self.image.get_width(),self.image.get_height())
         self.facing = [0,1]
-        self.vel = 3
+        self.vel = 6
         self.folow = False
         self.health = 100
         self.maxhealth = 100
@@ -80,8 +92,83 @@ class enenmy:
     def draw_hitbox(self):
         pygame.draw.rect(screen,(255,0,0),self.hitbox,1)
 def loose():
+    pygame.mixer.music.stop()
+    for i in range (50):
+        for events in pygame.event.get():
+            if events.type == pygame.QUIT:
+                return False
+        bs.set_alpha(i)
+        screen.blit(bs,(0,0))
+        pygame.display.update()
+    font = pygame.font.SysFont('comicsans',100,True)
+    text = font.render("You Lost!",1,(255,0,0))
+    alpha = 0
+    pygame.mixer.Sound('lose.mp3').play()
+    while alpha < 200:
+        for events in pygame.event.get():
+            if events.type == pygame.QUIT:
+                return False 
+        screen.fill((0,0,0))
+        text.set_alpha(alpha)
+        screen.blit(text,((screen.get_width()//2)-(text.get_width()//2),(screen.get_height()//2)-(text.get_height()//2)))
+        pygame.display.update()
+        alpha += 1
+        pygame.time.wait(10)
+    for i in range (100):
+        for events in pygame.event.get():
+            if events.type == pygame.QUIT:
+                return False
+        pygame.time.wait(10)
+    while alpha > 0:
+        for events in pygame.event.get():
+            if events.type == pygame.QUIT:
+                return False
+        screen.fill((0,0,0))
+        text.set_alpha(alpha)
+        screen.blit(text,((screen.get_width()//2)-(text.get_width()//2),(screen.get_height()//2)-(text.get_height()//2)))
+        pygame.display.update()
+        alpha -= 1
+        pygame.time.wait(10)
+
     return False
 def win():
+    pygame.mixer.Sound('win.wav').play()
+    pygame.mixer.music.stop()
+    for i in range (50):
+        for events in pygame.event.get():
+            if events.type == pygame.QUIT:
+                return False
+        bs.set_alpha(i)
+        screen.blit(bs,(0,0))
+        pygame.display.update()
+    font = pygame.font.SysFont('comicsans',100,True)
+    text = font.render("You won!",1,(0,255,0))
+    alpha = 0
+    while alpha < 200:
+        for events in pygame.event.get():
+            if events.type == pygame.QUIT:
+                return False 
+        screen.fill((0,0,0))
+        text.set_alpha(alpha)
+        screen.blit(text,((screen.get_width()//2)-(text.get_width()//2),(screen.get_height()//2)-(text.get_height()//2)))
+        pygame.display.update()
+        alpha += 1
+        pygame.time.wait(11)
+    for i in range (100):
+        for events in pygame.event.get():
+            if events.type == pygame.QUIT:
+                return False
+        pygame.time.wait(11)
+    while alpha > 0:
+        for events in pygame.event.get():
+            if events.type == pygame.QUIT:
+                return False
+        screen.fill((0,0,0))
+        text.set_alpha(alpha)
+        screen.blit(text,((screen.get_width()//2)-(text.get_width()//2),(screen.get_height()//2)-(text.get_height()//2)))
+        pygame.display.update()
+        alpha -= 1
+        pygame.time.wait(11)
     return False
 def draw ():
     screen.fill((0,0,0))
@@ -89,8 +176,10 @@ def draw ():
     if p.showhitbox:
         p.draw_hitbox()
         e.draw_hitbox()
-    pygame.draw.line(screen,e.healthbarcolor,(0,0),((e.maxhealth*10)-(e.maxhealth-e.health)*10,0),20)
-    pygame.draw.line(screen,p.healthbarcolor,(0,20),((p.maxhealth*10)-(p.maxhealth-p.health)*10,20),20)
+    if e.health > 0:
+        pygame.draw.line(screen,e.healthbarcolor,(0,0),((e.maxhealth*10)-(e.maxhealth-e.health)*10,0),20)
+    if p.health > 0:
+        pygame.draw.line(screen,p.healthbarcolor,(0,20),((p.maxhealth*10)-(p.maxhealth-p.health)*10,20),20)
     for bullet in bullets.all:
         screen.blit(bullet.image,(bullet.x,bullet.y))
     screen.blit(e.image,(e.x,e.y))
@@ -113,8 +202,6 @@ def inside(hitbox,bullet):
           if bullet[1] <= (hitbox[1] + hitbox[3]) and bullet[1]+bullet[3] >= hitbox[1] :
              return True
      return False
-         
-pygame.init()
 screen = pygame.display.set_mode((1000,1000))
 run = True
 p= player()
@@ -163,6 +250,7 @@ while run:
     if keys[K_x] and cooldownb == 0:
         p_bullet(p)
         cooldownb = bullets.all[-1].cooldown
+        bullets.all[-1].sound.play()
     if abs(x)+abs(y) == p.vel*2:
         x *= p.persentage
         y *= p.persentage
@@ -182,6 +270,7 @@ while run:
                 if inside(hitbox,bullet):
                     if not (hitbox[1].shield.enable):
                         hitbox[1].health -= bullet.damage
+                    bullet.damages.play()
                     del(bullet)
                     bullets.all.pop(index)
                     break
@@ -211,9 +300,9 @@ while run:
         yn = -1
         y = abs(y)
     e.facing = [x/(x+y) *xn,y/(x+y)*yn]
-    print(e.facing)
     if cooldownbb == 0:
         b_bullet(e)
+        bullets.all[-1].sound.play()
         cooldownbb = bullets.all[-1].cooldown
     draw()
     if cooldownsh > 0:
@@ -231,8 +320,8 @@ while run:
         e.shield.enable = False
         e.shield.time = 300
     allhitbox = [[p.hitbox,p],[e.hitbox,e]]
-    if e.health < 0:
+    if e.health <= 0:
         run = win()
-    if p.health < 0:
+    if p.health <= 0:
         run = loose()
 pygame.quit()
