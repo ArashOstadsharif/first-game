@@ -6,7 +6,7 @@ from pygame import mixer
 from pygame.constants import K_DOWN, K_ESCAPE, K_LEFT, K_RIGHT, K_SPACE, K_UP, K_f, K_m, K_s, K_x
 import copy
 pygame.init()
-w = 1000
+w = 1920
 h = 1000
 bs = pygame.image.load("black_screen.PNG")
 bg = pygame.image.load("bg.PNG")
@@ -19,10 +19,11 @@ click = pygame.mixer.Sound("click.mp3")
 bgmusic = mixer.music.load('bg_music.OGG')
 pygame.mixer.music.set_volume(0.5)
 pygame.mixer.music.play(-1)
-muted = True
+muted = False
 class bullets:
     all = []
     def __init__(self,ob):
+        self.ss = ob
         self.rect = None
         self.x = ob.x +(ob.image.get_width()//2)
         self.y = ob.y 
@@ -53,15 +54,15 @@ class b_bullet(bullets):
         self.rect.topleft = (self.x,self.y)
         self.x -= self.image.get_width()//2
         self.y += ob.image.get_height()+1
-        self.vel = 8
-        self.cooldown = 18 
+        self.vel = 10
+        self.cooldown = 16 
         self.all.append(self)
 
 class player:
     def __init__(self):
         self.image = pygame.image.load("ss.PNG")
-        self.x = 250
-        self.y = 250
+        self.x = w//2 -  self.image.get_width()//2
+        self.y = h - self.image.get_height()
         self.x_midle = self.image.get_width()/2 + self.x
         self.y_midle = self.image.get_height()/2 + self.y
         self.vel = 10
@@ -71,8 +72,8 @@ class player:
         self.showhitbox = False
         self.facing = [0,-1]
         self.shield = shield(self)
-        self.health = 10
-        self.maxhealth = 10
+        self.health = 4
+        self.maxhealth = 4
         self.healthbarcolor = (0,255,0)
         allhitbox.append([self.hitbox,self])
         allss.append(self)
@@ -95,7 +96,7 @@ class enenmy:
         self.y_midle = self.image.get_height()/2 + self.y
         self.hitbox = (self.x,self.y,self.image.get_width(),self.image.get_height())
         self.facing = [0,1]
-        self.vel = 6
+        self.vel = 10
         self.folow = False
         self.health = 100
         self.maxhealth = 100
@@ -126,7 +127,7 @@ class buttons():
                 self.clicked = True
                 screen.blit(self.image,(self.rect.x,self.rect.y))
             else:
-                screen.blit(self.himage,(self.rect.x,self.rect.y))
+                screen.blit(self.himage,(self.rect.x-(self.himage.get_width()-self.image.get_width())//2,self.rect.y))
         else:
             self.hovered = False
             screen.blit(self.image,(self.rect.x,self.rect.y))
@@ -281,7 +282,7 @@ def draw ():
         p.draw_hitbox()
         e.draw_hitbox()
     if e.health > 0:
-        pygame.draw.line(screen,e.healthbarcolor,(0,0),((e.maxhealth*10)-(e.maxhealth-e.health)*10,0),20)
+        pygame.draw.line(screen,e.healthbarcolor,(0,0),((e.maxhealth*(w//e.maxhealth))-(e.maxhealth-e.health)*(w//e.maxhealth),0),20)
     if p.health > 0:
         pygame.draw.line(screen,p.healthbarcolor,(0,20),((p.maxhealth*10)-(p.maxhealth-p.health)*10,20),20)
     for bullet in bullets.all:
@@ -316,7 +317,6 @@ pygame.display.set_caption('space shooter')
 while run:
     x = 0
     y = 0
-    pygame.time.wait(1000//30)
     for events in pygame.event.get():
         if events.type == pygame.QUIT:
             run = False
@@ -329,6 +329,7 @@ while run:
         cooldownsh = 6
     if keys[K_ESCAPE] and cooldownsh == 0:
         paused = True
+        pygame.mixer.music.pause()
         while paused:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -338,6 +339,7 @@ while run:
                     if event.key == K_ESCAPE:
                         paused = False
         cooldownsh = 6
+        pygame.mixer.music.unpause()
     if keys[K_m] and cooldownsh == 0:
         if muted:
             muted = False
@@ -390,7 +392,7 @@ while run:
             bullets.all.pop(index)
         else:
             for hitbox in allhitbox:
-                if inside(hitbox,bullet):
+                if hitbox[1] != bullet.ss and inside(hitbox,bullet):
                     if not (hitbox[1].shield.enable):
                         hitbox[1].health -= bullet.damage
                     if not muted:
@@ -423,6 +425,8 @@ while run:
     if y != abs(y):
         yn = -1
         y = abs(y)
+    if y == 0:
+        y = 1
     e.facing = [x/(x+y) *xn,y/(x+y)*yn]
     if cooldownbb == 0:
         b_bullet(e)
@@ -453,4 +457,5 @@ while run:
         pygame.mixer.music.set_volume(0)
     else:
         pygame.mixer.music.set_volume(0.5)
+    pygame.time.wait(1000//100)
 pygame.quit()
