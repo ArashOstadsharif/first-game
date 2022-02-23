@@ -3,7 +3,7 @@ import pygame
 from pygame import event
 from pygame import key
 from pygame import mixer
-from pygame.constants import K_DOWN, K_ESCAPE, K_LEFT, K_RIGHT, K_SPACE, K_UP, K_f, K_m, K_s, K_x
+from pygame.constants import K_DOWN, K_ESCAPE, K_LEFT, K_RIGHT, K_SPACE, K_UP, K_f, K_m, K_p, K_q, K_s, K_x, K_z
 import copy
 pygame.init()
 w = 1920
@@ -17,9 +17,9 @@ allss = []
 hover = pygame.mixer.Sound("hover.mp3")
 click = pygame.mixer.Sound("click.mp3")
 bgmusic = mixer.music.load('bg_music.OGG')
-pygame.mixer.music.set_volume(0.5)
+pygame.mixer.music.set_volume(0.0)
 pygame.mixer.music.play(-1)
-muted = False
+muted = True
 class bullets:
     all = []
     def __init__(self,ob):
@@ -31,7 +31,7 @@ class bullets:
 class p_bullet(bullets):
     def __init__(self, ob):
         super().__init__(ob)
-        self.damage = 2
+        self.damage = 1
         self.image = pygame.image.load("b_p.PNG")
         self.sound = pygame.mixer.Sound('b_p_s.wav')
         self.damages = pygame.mixer.Sound('b_p_d.mp3')
@@ -53,9 +53,9 @@ class b_bullet(bullets):
         self.rect = self.image.get_rect()
         self.rect.topleft = (self.x,self.y)
         self.x -= self.image.get_width()//2
-        self.y += ob.image.get_height()+1
-        self.vel = 10
-        self.cooldown = 16 
+        self.y += ob.image.get_height()
+        self.vel = 8
+        self.cooldown = 18 
         self.all.append(self)
 
 class player:
@@ -71,9 +71,12 @@ class player:
         self.hitbox = (self.x,self.y,self.image.get_width(),self.image.get_height())
         self.showhitbox = False
         self.facing = [0,-1]
+        self.shieldbarcolor = (0,0,200)
+        self.shieldimg =pygame.image.load('p_shield.PNG')
+        self.shieldtime = 50
         self.shield = shield(self)
-        self.health = 4
-        self.maxhealth = 4
+        self.health = 10
+        self.maxhealth = 10
         self.healthbarcolor = (0,255,0)
         allhitbox.append([self.hitbox,self])
         allss.append(self)
@@ -81,11 +84,12 @@ class player:
         pygame.draw.rect(screen,(255,0,0),self.hitbox,1)
 class shield:
     def __init__(self,o):
-        self.image = pygame.image.load('shield.PNG')
+        self.image = o.shieldimg
         self.image.set_alpha(100)
         self.x = o.x
-        self.y = o.y-90
-        self.time = 300
+        self.y = o.y
+        self.mxtime = o.shieldtime
+        self.time = o.shieldtime
         self.enable = False
 class enenmy:
     def __init__(self):
@@ -96,11 +100,13 @@ class enenmy:
         self.y_midle = self.image.get_height()/2 + self.y
         self.hitbox = (self.x,self.y,self.image.get_width(),self.image.get_height())
         self.facing = [0,1]
-        self.vel = 10
+        self.vel = 6
         self.folow = False
         self.health = 100
         self.maxhealth = 100
         self.healthbarcolor = (255,0,0)
+        self.shieldimg =pygame.image.load('shield.PNG')
+        self.shieldtime = 300
         self.shield = shield(self)
         allhitbox.append([self.hitbox,self])
         allss.append(self)
@@ -119,9 +125,10 @@ class buttons():
     def draw(self,alpha):
         self.image.set_alpha(alpha)
         p = pygame.mouse.get_pos()
-        if self.rect.collidepoint(p):
+        if self.rect.collidepoint(p) and alpha == 200:
             if not(self.hovered):
-                hover.play()
+                if not muted:
+                    hover.play()
             self.hovered = True
             if pygame.mouse.get_pressed()[0] or self.clicked:
                 self.clicked = True
@@ -131,6 +138,9 @@ class buttons():
         else:
             self.hovered = False
             screen.blit(self.image,(self.rect.x,self.rect.y))
+    def sdraw(self,alpha):
+        self.image.set_alpha(alpha)
+        screen.blit(self.image,(self.rect.x,self.rect.y))
 def reset(pa,q):
     for i in bullets.all:
         del(i)
@@ -154,13 +164,15 @@ def reset(pa,q):
     cooldownb = 0
     cooldownbb = 0
     pygame.mixer.music.set_volume(0.5)
+    if muted:
+        pygame.mixer.music.set_volume(0.0)
     pygame.mixer.music.play(-1)
 def button_animation(pa,q,alpha):
     while alpha > 0:
         pygame.time.wait(1)
         screen.fill((0,0,0))
-        pa.draw(alpha)
-        q.draw(alpha)
+        pa.sdraw(alpha)
+        q.sdraw(alpha)
         pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -181,13 +193,20 @@ def button():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
+            if event.type == pygame.KEYDOWN:
+                if event.key == K_p:
+                    pa.clicked = True
+                if event.key == K_q:
+                    q.clicked = True
         if q.clicked:
-            click.play()
+            if not muted:
+                click.play()
             button_animation(pa,q,alpha)
             return False
         if pa.clicked:
             reset(pa,q)
-            click.play()
+            if not muted:
+                click.play()
             a = button_animation(pa,q,alpha)
             if not(a):
                 return False
@@ -278,31 +297,30 @@ def win():
 def draw ():
     screen.fill((0,0,0))
     screen.blit(bg,(0,0))
+    p.shield.x = p.x
+    p.shield.y = p.y
     if p.showhitbox:
         p.draw_hitbox()
         e.draw_hitbox()
+    if p.shield.time > 0:
+        pygame.draw.line(screen,p.shieldbarcolor,(0,h-30),(((p.shield.mxtime*(w//p.shield.mxtime))-(p.shield.mxtime-p.shield.time)*(w//p.shield.mxtime))//4,h-30),20)
+    pygame.draw.line(screen,(255,0,0),(((p.shield.mxtime*(w//p.shield.mxtime))-(p.shield.mxtime-20)*(w//p.shield.mxtime))//4,h-40),(((p.shield.mxtime*(w//p.shield.mxtime))-(p.shield.mxtime-20)*(w//p.shield.mxtime))//4,h-20),3)
     if e.health > 0:
-        pygame.draw.line(screen,e.healthbarcolor,(0,0),((e.maxhealth*(w//e.maxhealth))-(e.maxhealth-e.health)*(w//e.maxhealth),0),20)
+        pygame.draw.line(screen,e.healthbarcolor,(0,10),((e.maxhealth*(w//e.maxhealth))-(e.maxhealth-e.health)*(w//e.maxhealth),10),20)
     if p.health > 0:
-        pygame.draw.line(screen,p.healthbarcolor,(0,20),((p.maxhealth*10)-(p.maxhealth-p.health)*10,20),20)
+        pygame.draw.line(screen,p.healthbarcolor,(0,h-10),((p.maxhealth*(w//p.maxhealth))-(p.maxhealth-p.health)*(w//p.maxhealth),h-10),20)
     for bullet in bullets.all:
         screen.blit(bullet.image,(bullet.x,bullet.y))
     screen.blit(e.image,(e.x,e.y))
     screen.blit(p.image ,(p.x,p.y))
     if e.shield.enable:
         screen.blit(e.shield.image,(e.shield.x,e.shield.y))
+    if p.shield.enable:
+        screen.blit(p.shield.image,(p.shield.x,p.shield.y))
     pygame.display.update()
 def inside(hitbox,bullet):
      hitbox = list(hitbox[0])
-     bullet = [bullet.x,bullet.y,bullet.image.get_height(),bullet.image.get_height()]
-     if hitbox[2] < bullet[2]:
-        x = copy(bullet)
-        bullet[0],bullet[2] = hitbox[0],bullet[2]
-        hitbox[0],hitbox[2] = x[0],x[2]
-     if hitbox[3] < bullet[3]:
-        x = copy(bullet)
-        bullet[1],bullet[3] = hitbox[1],bullet[3]
-        hitbox[1],hitbox[3] = x[1],x[3]
+     bullet = [bullet.x,bullet.y,bullet.image.get_width(),bullet.image.get_height()]
      if bullet[0] <= (hitbox[0] + hitbox[2]) and bullet[0]+bullet[2] >= hitbox[0] :
           if bullet[1] <= (hitbox[1] + hitbox[3]) and bullet[1]+bullet[3] >= hitbox[1] :
              return True
@@ -370,6 +388,11 @@ while run:
         else:
             p.x = 0
             p.x_midle = p.image.get_width()/2
+    if keys[K_z] and ((p.shield.enable == True and p.shield.time > 0)or(p.shield.time > 20)):
+        p.shield.enable = True
+        p.shield.time -= 1
+    else:
+        p.shield.enable = False
     if keys[K_x] and cooldownb == 0:
         p_bullet(p)
         cooldownb = bullets.all[-1].cooldown
@@ -444,10 +467,10 @@ while run:
     if e.shield.time == 0:
         e.folow = True
         e.shield.enable = True
-    if e.shield.time == -300:
+    if e.shield.time == -(e.shield.mxtime):
         e.folow = False
         e.shield.enable = False
-        e.shield.time = 300
+        e.shield.time = e.shield.mxtime
     allhitbox = [[p.hitbox,p],[e.hitbox,e]]
     if e.health <= 0:
         run = win()
@@ -457,5 +480,18 @@ while run:
         pygame.mixer.music.set_volume(0)
     else:
         pygame.mixer.music.set_volume(0.5)
-    pygame.time.wait(1000//100)
+    if keys[K_ESCAPE] and cooldownsh == 0:
+        paused = True
+        pygame.mixer.music.pause()
+        while paused:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    run = False
+                    paused = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == K_ESCAPE:
+                        paused = False
+    if not(p.shield.enable) and p.shield.time < p.shield.mxtime:
+        p.shield.time += 0.2
+    pygame.time.wait(1)
 pygame.quit()
