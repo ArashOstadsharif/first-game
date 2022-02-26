@@ -1,3 +1,4 @@
+from re import T
 from typing import Counter
 import pygame
 from pygame import event
@@ -28,10 +29,11 @@ class bullets:
         self.x = ob.x +(ob.image.get_width()//2)
         self.y = ob.y 
         self.facing = ob.facing
+        self.bounce = False
 class p_bullet(bullets):
     def __init__(self, ob):
         super().__init__(ob)
-        self.damage = 1
+        self.damage = 3
         self.image = pygame.image.load("b_p.PNG")
         self.sound = pygame.mixer.Sound('b_p_s.wav')
         self.damages = pygame.mixer.Sound('b_p_d.mp3')
@@ -55,6 +57,7 @@ class b_bullet(bullets):
         self.x -= self.image.get_width()//2
         self.y += ob.image.get_height()
         self.vel = 8
+        self.bounce = False
         self.cooldown = 18 
         self.all.append(self)
 
@@ -70,13 +73,14 @@ class player:
         self.hitbox_h_w = [85,65] 
         self.hitbox = (self.x,self.y,self.image.get_width(),self.image.get_height())
         self.showhitbox = False
+        self.bps = 5
         self.facing = [0,-1]
         self.shieldbarcolor = (0,0,200)
         self.shieldimg =pygame.image.load('p_shield.PNG')
         self.shieldtime = 50
         self.shield = shield(self)
-        self.health = 10
-        self.maxhealth = 10
+        self.health = 100
+        self.maxhealth = 100
         self.healthbarcolor = (0,255,0)
         allhitbox.append([self.hitbox,self])
         allss.append(self)
@@ -99,11 +103,12 @@ class enenmy:
         self.x_midle = self.image.get_width()/2 + self.x
         self.y_midle = self.image.get_height()/2 + self.y
         self.hitbox = (self.x,self.y,self.image.get_width(),self.image.get_height())
-        self.facing = [0,1]
+        self.bps = 3
+        self.facing = [-1,0]
         self.vel = 6
         self.folow = False
-        self.health = 100
-        self.maxhealth = 100
+        self.health = 497
+        self.maxhealth = 497
         self.healthbarcolor = (255,0,0)
         self.shieldimg =pygame.image.load('shield.PNG')
         self.shieldtime = 300
@@ -306,9 +311,9 @@ def draw ():
         pygame.draw.line(screen,p.shieldbarcolor,(0,h-30),(((p.shield.mxtime*(w//p.shield.mxtime))-(p.shield.mxtime-p.shield.time)*(w//p.shield.mxtime))//4,h-30),20)
     pygame.draw.line(screen,(255,0,0),(((p.shield.mxtime*(w//p.shield.mxtime))-(p.shield.mxtime-20)*(w//p.shield.mxtime))//4,h-40),(((p.shield.mxtime*(w//p.shield.mxtime))-(p.shield.mxtime-20)*(w//p.shield.mxtime))//4,h-20),3)
     if e.health > 0:
-        pygame.draw.line(screen,e.healthbarcolor,(0,10),((e.maxhealth*(w//e.maxhealth))-(e.maxhealth-e.health)*(w//e.maxhealth),10),20)
+        pygame.draw.line(screen,e.healthbarcolor,(0,10),(w-(e.maxhealth-e.health)*(w/e.maxhealth),10),20)
     if p.health > 0:
-        pygame.draw.line(screen,p.healthbarcolor,(0,h-10),((p.maxhealth*(w//p.maxhealth))-(p.maxhealth-p.health)*(w//p.maxhealth),h-10),20)
+        pygame.draw.line(screen,p.healthbarcolor,(0,h-10),(w-(p.maxhealth-p.health)*(w/p.maxhealth),h-10),20)
     for bullet in bullets.all:
         screen.blit(bullet.image,(bullet.x,bullet.y))
     screen.blit(e.image,(e.x,e.y))
@@ -344,18 +349,6 @@ while run:
             p.showhitbox = False
         else:
             p.showhitbox = True
-        cooldownsh = 6
-    if keys[K_ESCAPE] and cooldownsh == 0:
-        paused = True
-        pygame.mixer.music.pause()
-        while paused:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    run = False
-                    paused = False
-                if event.type == pygame.KEYDOWN:
-                    if event.key == K_ESCAPE:
-                        paused = False
         cooldownsh = 6
         pygame.mixer.music.unpause()
     if keys[K_m] and cooldownsh == 0:
@@ -394,7 +387,11 @@ while run:
     else:
         p.shield.enable = False
     if keys[K_x] and cooldownb == 0:
-        p_bullet(p)
+        p.facing = [-1,0]
+        for i in range(p.bps):
+            f = (2/(p.bps+1))
+            p.facing = [f*(i+1) - 1,-(1-(abs(f*(i+1)-1)))]
+            p_bullet(p)
         cooldownb = bullets.all[-1].cooldown
         if not(muted):
             bullets.all[-1].sound.play()
@@ -410,9 +407,15 @@ while run:
         bullet.y += bullet.facing[1] * bullet.vel
         bullet.rect.topleft = (x,y)
         index = bullets.all.index(bullet)
-        if bullet.x == 0 or bullet.x >(screen.get_width()) or bullet.y < 0 or bullet.y>screen.get_height():
+        if   bullet.y + bullet.image.get_height() <= 0 or bullet.y >=screen.get_height():
             del(bullet)
             bullets.all.pop(index)
+        elif bullet.x  <= 0 or bullet.x + bullet.image.get_width() >=(screen.get_width()) :
+            if bullet.bounce:
+                bullet.facing[0] *= -1
+            elif bullet.x+ bullet.image.get_width()  <= 0 or bullet.x  >=(screen.get_width()):
+                del(bullet)
+                bullets.all.pop(index)
         else:
             for hitbox in allhitbox:
                 if hitbox[1] != bullet.ss and inside(hitbox,bullet):
@@ -438,21 +441,30 @@ while run:
     e.shield.x = e.x
     e.shield.y = e.y - 90
     e.shield.hitbox = e.hitbox
-    x = (p.x_midle - e.x_midle)
-    y = (p.y - (e.y+e.image.get_height()))
-    xn = 1
-    yn = 1
-    if x != abs(x):
-        xn = -1
-        x = abs(x)
-    if y != abs(y):
-        yn = -1
-        y = abs(y)
-    if y == 0:
-        y = 1
-    e.facing = [x/(x+y) *xn,y/(x+y)*yn]
     if cooldownbb == 0:
-        b_bullet(e)
+        x = (p.x_midle - e.x_midle)
+        y = (p.y - (e.y+e.image.get_height()))
+        xn = 1
+        yn = 1
+        if x != abs(x):
+            xn = -1
+            x = abs(x)
+        if y != abs(y):
+            yn = -1
+            y = abs(y)
+        if y == 0:
+            y = 1
+        e.facing = [x/(x+y) *xn,y/(x+y)*yn]
+        f_x = e.facing[0]
+        if ((e.facing[0]+1-f_x)/round(e.bps/2+0.01)) -1 + f_x < -1 :
+            e.facing = [e.facing[0]+(((e.facing[0]+1-f_x)/round(e.bps/2+0.01))*(e.bps - round(e.bps/2 + 0.1))),1-e.facing[0]+(((e.facing[0]+1-f_x)/round(e.bps/2+0.01))*(e.bps - round(e.bps/2 + 0.1)))]
+        elif ((e.facing[0]+1-f_x)/round(e.bps/2+0.01))*e.bps -1 + f_x > 1 :
+            e.facing = [e.facing[0]-(((e.facing[0]+1-f_x)/round(e.bps/2+0.01))*(e.bps - round(e.bps/2 + 0.1))),1-e.facing[0]-(((e.facing[0]+1-f_x)/round(e.bps/2+0.01))*(e.bps - round(e.bps/2 + 0.1)))]
+        f_x = e.facing[0]
+        for i in range(e.bps):
+            f = (2/(e.bps+1))
+            e.facing = [f*(i+1)-1 + f_x,(1-(abs(f*(i+1)-1 + f_x)))]
+            b_bullet(e)
         if not muted:
             bullets.all[-1].sound.play()
         cooldownbb = bullets.all[-1].cooldown
@@ -491,7 +503,8 @@ while run:
                 if event.type == pygame.KEYDOWN:
                     if event.key == K_ESCAPE:
                         paused = False
+                        cooldownsh = 6
     if not(p.shield.enable) and p.shield.time < p.shield.mxtime:
         p.shield.time += 0.2
-    pygame.time.wait(1)
+    pygame.time.wait(0)
 pygame.quit()
